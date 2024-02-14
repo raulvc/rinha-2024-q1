@@ -1,0 +1,2 @@
+server:
+  port: 8000 # libsql-server default listen port is 8080

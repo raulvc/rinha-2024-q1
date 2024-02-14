@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+db:
+  host: localhost
+  port: 8080
+
+etcd:
+  host: localhost
+  port: 2379
+  ttl: 5s
+  backoff: 200ms

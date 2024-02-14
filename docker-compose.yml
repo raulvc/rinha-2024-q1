@@ -1,0 +1,66 @@
+version: '3.7'
+
+services:
+  haproxy:
+    image: haproxy:alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "9999:80"
+    restart: unless-stopped
+    networks:
+      - rinha
+    deploy:
+      resources:
+        limits:
+          cpus: "0.6"
+          memory: "20MB"
+
+  libsql-server:
+    image: raulvc/rinha-libsql-server:latest
+    hostname: db
+    networks:
+      - rinha
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.13"
+          memory: "140MB"
+
+  etcd:
+    image: bitnami/etcd:latest
+    hostname: etcd
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    networks:
+      - rinha
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: "25MB"
+
+  server1: &server
+    image: raulvc/rinha-server:latest
+    hostname: server1
+    environment:
+      - RUST_ENV=docker
+    depends_on:
+      - libsql-server
+      - etcd
+    deploy:
+      resources:
+        limits:
+          cpus: "0.45"
+          memory: "200MB"
+
+  server2:
+    <<: *server
+    hostname: server2
+
+networks:
+  rinha:
+    driver: bridge
