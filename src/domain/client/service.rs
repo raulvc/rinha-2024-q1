@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::http::StatusCode;
 use derive_new::new;
+use libsql::params::Params;
 use libsql::{de, Connection};
 use sea_query::{Expr, Query, SqliteQueryBuilder};
 
@@ -20,10 +21,11 @@ impl ClientService {
 
         let row = self
             .db
-            .query(&query, None)
+            .query(&query, Params::None)
             .await
             .context("failed to query for rows")?
             .next()
+            .await
             .context("failed to retrieve next row")?;
 
         if let Some(client_row) = row {
@@ -46,10 +48,11 @@ impl ClientService {
         let query = Self::find_meta_query(id);
 
         let row = db
-            .query(&query, None)
+            .query(&query, Params::None)
             .await
             .context("failed to query for rows")?
             .next()
+            .await
             .context("failed to retrieve next row")?;
 
         if let Some(meta_row) = row {
@@ -75,12 +78,12 @@ impl ClientService {
     fn find_meta_query(client_id: u32) -> String {
         Query::select()
             .columns([
-                ClientMetaTable::ID,
+                ClientMetaTable::ClientID,
                 ClientMetaTable::Balance,
                 ClientMetaTable::NegativeLimit,
             ])
             .from(ClientMetaTable::Table)
-            .and_where(Expr::col(ClientMetaTable::ID).eq(client_id))
+            .and_where(Expr::col(ClientMetaTable::ClientID).eq(client_id))
             .to_string(SqliteQueryBuilder)
             .to_owned()
     }
@@ -89,7 +92,7 @@ impl ClientService {
         Query::update()
             .table(ClientMetaTable::Table)
             .values([(ClientMetaTable::Balance, balance.into())])
-            .and_where(Expr::col(ClientMetaTable::ID).eq(client_id))
+            .and_where(Expr::col(ClientMetaTable::ClientID).eq(client_id))
             .to_string(SqliteQueryBuilder)
             .to_owned()
     }

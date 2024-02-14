@@ -26,7 +26,7 @@ pub enum ClientTable {
 pub enum ClientMetaTable {
     #[iden = "client_meta"]
     Table,
-    ID,
+    ClientID,
     Balance,
     NegativeLimit,
 }

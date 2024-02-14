@@ -20,7 +20,7 @@ pub(crate) struct State {
 impl State {
     pub async fn new() -> Self {
         let config = Arc::new(AppConfig::new());
-        let db = Arc::new(db::new(&config));
+        let db = Arc::new(db::new(&config).await);
         let locker = Arc::new(Locker::new(&config).await);
 
         let client_service = Arc::new(ClientService::new(db.clone()));

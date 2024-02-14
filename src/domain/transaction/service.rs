@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::domain::client::model::Client;
 use anyhow::Context;
 use axum::http::StatusCode;
 use derive_new::new;
+use libsql::params::Params;
 use libsql::{de, Connection};
 use sea_query::{Expr, Order, Query, SqliteQueryBuilder};
 
@@ -45,16 +45,15 @@ impl TransactionService {
         let query = Self::find_latest_query(client_id);
 
         let mut rows = db
-            .query(&query, None)
+            .query(&query, Params::None)
             .await
             .context("failed to query for rows")?;
 
-        let transactions = rows.try_fold(Vec::new(), |mut acc, row_result| {
-            let row = row_result.context("failed to retrieve next row")?;
+        let mut transactions = Vec::new();
+        while let Some(row) = rows.next().await.context("failed to retrieve next row")? {
             let transaction = de::from_row::<Transaction>(&row).context("failed to parse row")?;
-            acc.push(transaction);
-            Ok(acc)
-        })?;
+            transactions.push(transaction);
+        }
 
         Ok(transactions)
     }
@@ -132,6 +131,7 @@ impl TransactionService {
     fn find_latest_query(client_id: u32) -> String {
         Query::select()
             .columns([
+                TransactionTable::ClientID,
                 TransactionTable::Amount,
                 TransactionTable::Operation,
                 TransactionTable::Description,

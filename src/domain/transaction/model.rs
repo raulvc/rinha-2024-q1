@@ -1,3 +1,4 @@
+use crate::tools::json::deserialize_sqlite_timestamp;
 use derive_new::new;
 use sea_query::Iden;
 use serde::{Deserialize, Serialize};
@@ -8,20 +9,14 @@ pub const OPERATION_CREDIT: &str = "c";
 pub const OPERATION_DEBIT: &str = "d";
 const OPERATIONS: &[&str] = &[OPERATION_CREDIT, OPERATION_DEBIT];
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Transaction {
     pub client_id: u32,
-
-    #[serde(rename = "valor")]
     pub amount: i32,
-
-    #[serde(rename = "tipo")]
     pub operation: String,
-
-    #[serde(rename = "descricao")]
     pub description: String,
 
-    #[serde(rename = "realizada_em", with = "time::serde::rfc3339")]
+    #[serde(deserialize_with = "deserialize_sqlite_timestamp")]
     pub created_at: OffsetDateTime,
 }
 

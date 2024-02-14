@@ -1,10 +1,13 @@
-use libsql::{Connection, Database};
+use libsql::{Builder, Connection};
 
 use crate::config::app_config::AppConfig;
 
-pub fn new(conf: &AppConfig) -> Connection {
+pub async fn new(conf: &AppConfig) -> Connection {
     let addr = format!("http://{}:{}", conf.db.host, conf.db.port);
-    let db = Database::open_remote(addr, "").unwrap();
+    let db = Builder::new_remote(addr, "".to_string())
+        .build()
+        .await
+        .unwrap();
 
     db.connect().unwrap()
 }

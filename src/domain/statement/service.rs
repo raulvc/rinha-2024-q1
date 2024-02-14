@@ -47,13 +47,13 @@ impl StatementService {
     }
 }
 
-impl Into<StatementTransaction> for Transaction {
-    fn into(self) -> StatementTransaction {
+impl From<Transaction> for StatementTransaction {
+    fn from(val: Transaction) -> Self {
         StatementTransaction {
-            amount: self.amount,
-            operation: self.operation,
-            description: self.description,
-            created_at: self.created_at,
+            amount: val.amount,
+            operation: val.operation,
+            description: val.description,
+            created_at: val.created_at,
         }
     }
 }
