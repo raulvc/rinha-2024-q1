@@ -2,20 +2,20 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use derive_new::new;
-use libsql::Connection;
 use time::OffsetDateTime;
 
 use crate::domain::client::service::ClientService;
 use crate::domain::statement::model::{Statement, StatementBalance, StatementTransaction};
 use crate::domain::transaction::model::Transaction;
 use crate::domain::transaction::service::TransactionService;
+use crate::tools::db::Database;
 use crate::tools::error::CustomError;
 
 #[derive(new)]
 pub struct StatementService {
     client_service: Arc<ClientService>,
     transaction_service: Arc<TransactionService>,
-    db: Arc<Connection>,
+    db: Arc<dyn Database>,
 }
 
 impl StatementService {

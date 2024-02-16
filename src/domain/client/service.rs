@@ -3,16 +3,16 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::http::StatusCode;
 use derive_new::new;
-use libsql::params::Params;
-use libsql::{de, Connection};
+use libsql::de;
 use sea_query::{Expr, Query, SqliteQueryBuilder};
 
 use crate::domain::client::model::{Client, ClientMeta, ClientMetaTable, ClientTable};
+use crate::tools::db::Database;
 use crate::tools::error::{CustomError, DomainError};
 
 #[derive(new)]
 pub struct ClientService {
-    db: Arc<Connection>,
+    db: Arc<dyn Database>,
 }
 
 impl ClientService {
@@ -21,7 +21,7 @@ impl ClientService {
 
         let row = self
             .db
-            .query(&query, Params::None)
+            .query(&query)
             .await
             .context("failed to query for rows")?
             .next()
@@ -42,13 +42,13 @@ impl ClientService {
     pub async fn find_meta(
         &self,
         id: u32,
-        conn: Option<&Connection>,
+        conn: Option<&dyn Database>,
     ) -> Result<ClientMeta, CustomError> {
-        let db = conn.unwrap_or(&self.db);
+        let db = conn.unwrap_or(&*self.db);
         let query = Self::find_meta_query(id);
 
         let row = db
-            .query(&query, Params::None)
+            .query(&query)
             .await
             .context("failed to query for rows")?
             .next()

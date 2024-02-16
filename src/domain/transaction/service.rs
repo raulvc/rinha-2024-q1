@@ -3,8 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::http::StatusCode;
 use derive_new::new;
-use libsql::params::Params;
-use libsql::{de, Connection};
+use libsql::de;
 use sea_query::{Expr, Order, Query, SqliteQueryBuilder};
 
 use crate::domain::client::service::ClientService;
@@ -12,13 +11,14 @@ use crate::domain::transaction::model::{
     CreateTransactionRequest, CreateTransactionResponse, Transaction, TransactionTable,
     OPERATION_CREDIT,
 };
+use crate::tools::db::Database;
 use crate::tools::error::{CustomError, DomainError};
 use crate::tools::locker::Locker;
 
 #[derive(new)]
 pub struct TransactionService {
     client_service: Arc<ClientService>,
-    db: Arc<Connection>,
+    db: Arc<dyn Database>,
     locker: Arc<Locker>,
 }
 
@@ -39,15 +39,12 @@ impl TransactionService {
     pub async fn find_latest(
         &self,
         client_id: u32,
-        conn: Option<&Connection>,
+        conn: Option<&dyn Database>,
     ) -> Result<Vec<Transaction>, CustomError> {
-        let db = conn.unwrap_or(&self.db);
+        let db = conn.unwrap_or(&*self.db);
         let query = Self::find_latest_query(client_id);
 
-        let mut rows = db
-            .query(&query, Params::None)
-            .await
-            .context("failed to query for rows")?;
+        let mut rows = db.query(&query).await.context("failed to query for rows")?;
 
         let mut transactions = Vec::new();
         while let Some(row) = rows.next().await.context("failed to retrieve next row")? {

@@ -6,7 +6,7 @@ use crate::config::app_config::AppConfig;
 use crate::domain::client::service::ClientService;
 use crate::domain::statement::service::StatementService;
 use crate::domain::transaction::service::TransactionService;
-use crate::tools::db;
+use crate::tools::db::LibsqlDatabase;
 use crate::tools::locker::Locker;
 
 #[derive(Clone, FromRef)]
@@ -20,7 +20,7 @@ pub(crate) struct State {
 impl State {
     pub async fn new() -> Self {
         let config = Arc::new(AppConfig::new());
-        let db = Arc::new(db::new(&config).await);
+        let db = Arc::new(LibsqlDatabase::new(&config).await);
         let locker = Arc::new(Locker::new(&config).await);
 
         let client_service = Arc::new(ClientService::new(db.clone()));
