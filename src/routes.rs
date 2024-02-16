@@ -7,6 +7,7 @@ use crate::state::State;
 
 pub(crate) fn new(state: State) -> IntoMakeService<Router> {
     Router::new()
+        .route("/health", get(|| async { "OK" }))
         .route("/clientes/:client_id/transacoes", post(create_transaction))
         .route("/clientes/:client_id/extrato", get(find_statement))
         .with_state(state)

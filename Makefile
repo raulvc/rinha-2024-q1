@@ -4,6 +4,10 @@ lint-fix:
 
 build:
 	cargo build --release
+	docker build . -t raulvc/rinha-app
+
+publish:
+	docker push raulvc/rinha-app
 
 db-build:
 	cd db && docker build . -t raulvc/rinha-libsql-server

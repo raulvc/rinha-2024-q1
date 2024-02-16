@@ -10,11 +10,14 @@ services:
     restart: unless-stopped
     networks:
       - rinha
+    depends_on:
+      - server1
+      - server2
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: "20MB"
+          cpus: "0.15"
+          memory: "40MB"
 
   libsql-server:
     image: raulvc/rinha-libsql-server:latest
@@ -25,8 +28,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.13"
-          memory: "140MB"
+          cpus: "0.75"
+          memory: "390MB"
 
   etcd:
     image: bitnami/etcd:latest
@@ -40,22 +43,24 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.3"
-          memory: "25MB"
+          cpus: "0.2"
+          memory: "40MB"
 
   server1: &server
-    image: raulvc/rinha-server:latest
+    image: raulvc/rinha-app:latest
     hostname: server1
     environment:
       - RUST_ENV=docker
+    networks:
+      - rinha
     depends_on:
       - libsql-server
       - etcd
     deploy:
       resources:
         limits:
-          cpus: "0.45"
-          memory: "200MB"
+          cpus: "0.2"
+          memory: "40MB"
 
   server2:
     <<: *server
