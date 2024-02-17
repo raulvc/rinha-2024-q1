@@ -1,6 +1,21 @@
 version: '3.7'
 
 services:
+  etcd:
+    image: bitnami/etcd:latest
+    hostname: etcd
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    networks:
+      - rinha
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "180MB"
+
   haproxy:
     image: haproxy:alpine
     volumes:
@@ -17,7 +32,7 @@ services:
       resources:
         limits:
           cpus: "0.15"
-          memory: "40MB"
+          memory: "60MB"
 
   libsql-server:
     image: raulvc/rinha-libsql-server:latest
@@ -28,23 +43,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.75"
-          memory: "390MB"
-
-  etcd:
-    image: bitnami/etcd:latest
-    hostname: etcd
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
-    networks:
-      - rinha
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "0.2"
-          memory: "40MB"
+          cpus: "0.45"
+          memory: "140MB"
 
   server1: &server
     image: raulvc/rinha-app:latest
@@ -53,14 +53,15 @@ services:
       - RUST_ENV=docker
     networks:
       - rinha
+    restart: unless-stopped
     depends_on:
-      - libsql-server
       - etcd
+      - libsql-server
     deploy:
       resources:
         limits:
           cpus: "0.2"
-          memory: "40MB"
+          memory: "60MB"
 
   server2:
     <<: *server

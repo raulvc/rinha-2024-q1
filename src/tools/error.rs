@@ -64,7 +64,11 @@ impl IntoResponse for CustomError {
                     .into_response()
             }
 
-            CustomError::Validation(err) => (StatusCode::BAD_REQUEST, Json(err)).into_response(),
+            CustomError::Validation(err) => {
+                tracing::warn!("{}", err);
+
+                (StatusCode::UNPROCESSABLE_ENTITY, Json(err)).into_response()
+            }
 
             CustomError::Domain(err) => {
                 tracing::warn!("domain error: {}", err.pretty());
@@ -73,11 +77,11 @@ impl IntoResponse for CustomError {
             }
 
             CustomError::Rejection(err) => {
-                tracing::debug!("{}", err);
+                tracing::warn!("{}", err);
 
                 (
-                    StatusCode::BAD_REQUEST,
-                    r#"{ "code": "badreq", "message": "requisição inválida", "status": 400 }"#,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    r#"{ "code": "unproc", "message": "requisição inválida", "status": 422 }"#,
                 )
                     .into_response()
             }
