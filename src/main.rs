@@ -4,6 +4,7 @@ use tokio::net::TcpListener;
 use tracing_subscriber::fmt as log_guard;
 
 use crate::state::State;
+use crate::tools::metrics;
 
 mod config;
 mod domain;
@@ -16,6 +17,8 @@ async fn main() {
     log_guard().init();
 
     let state = State::new().await;
+    metrics::register(&state.prometheus_registry);
+
     let addr = SocketAddr::from(([0, 0, 0, 0], state.config.server.port));
     let listener = TcpListener::bind(addr).await.unwrap();
 

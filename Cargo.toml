@@ -21,3 +21,5 @@ redlock = { version = "2.0.0", features = ["async"] }
 humantime = "2.1.0"
 tower-http = { version = "0.5.1", features = ["catch-panic"] }
 redis = "0.23.3"
+prometheus = "0.13.3"
+lazy_static = "1.4.0"

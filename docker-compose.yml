@@ -11,7 +11,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: "60MB"
+          memory: "90MB"
 
   haproxy:
     image: haproxy:alpine
@@ -28,8 +28,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "60MB"
+          cpus: "0.25"
+          memory: "90MB"
 
   libsql-server:
     image: raulvc/rinha-libsql-server:latest
@@ -40,7 +40,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: "0.6"
           memory: "160MB"
 
   server1: &server
@@ -57,8 +57,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.3"
-          memory: "110MB"
+          cpus: "0.2"
+          memory: "80MB"
 
   server2:
     <<: *server

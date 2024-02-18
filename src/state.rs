@@ -15,6 +15,7 @@ pub(crate) struct State {
     pub locker: Arc<Locker>,
     pub transaction_service: Arc<TransactionService>,
     pub statement_service: Arc<StatementService>,
+    pub prometheus_registry: Arc<prometheus::Registry>,
 }
 
 impl State {
@@ -35,11 +36,14 @@ impl State {
             db,
         ));
 
+        let prometheus_registry = Arc::new(prometheus::Registry::new());
+
         State {
             config,
             locker,
             transaction_service,
             statement_service,
+            prometheus_registry,
         }
     }
 }
