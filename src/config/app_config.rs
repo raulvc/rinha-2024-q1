@@ -2,16 +2,17 @@ use std::env;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::tools::json::deserialize_duration;
 use config::File;
 use config::{Config, ConfigError};
 use serde::Deserialize;
+
+use crate::tools::json::deserialize_duration;
 
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
     pub server: Server,
     pub db: Database,
-    pub etcd: Etcd,
+    pub redis: Redis,
 }
 
 impl AppConfig {
@@ -49,16 +50,17 @@ pub struct Server {
 pub struct Database {
     pub host: String,
     pub port: u16,
+    pub max_connections: usize,
+
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub max_idle: Duration,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Etcd {
+pub struct Redis {
     pub host: String,
     pub port: u16,
 
     #[serde(deserialize_with = "deserialize_duration")]
     pub ttl: Duration,
-
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub backoff: Duration,
 }

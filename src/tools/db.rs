@@ -1,10 +1,10 @@
-use std::future::Future;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use axum::async_trait;
 use libsql::params::Params;
-use libsql::{Builder, Connection, Rows};
-use tokio::sync::RwLock;
+use libsql::{Builder, Rows, TransactionBehavior};
+use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 use crate::config::app_config::AppConfig;
 
@@ -12,19 +12,22 @@ use crate::config::app_config::AppConfig;
 pub trait Database: Send + Sync {
     async fn execute_batch(&self, sql: &str) -> libsql::Result<()>;
     async fn query(&self, sql: &str) -> libsql::Result<Rows>;
-    async fn transaction(&self) -> libsql::Result<LibsqlTransaction>;
+    async fn transaction(&self, behavior: TransactionBehavior)
+        -> libsql::Result<LibsqlTransaction>;
 }
 
-pub struct LibsqlDatabase {
+pub struct PooledLibsqlDatabase {
     db: libsql::Database,
-    conn: Arc<RwLock<Connection>>,
+    connections: Mutex<Vec<(libsql::Connection, Instant)>>,
+    max_idle: Duration,
+    semaphore: Arc<Semaphore>,
 }
 
 pub struct LibsqlTransaction {
     tx: libsql::Transaction,
 }
 
-impl LibsqlDatabase {
+impl PooledLibsqlDatabase {
     pub async fn new(conf: &AppConfig) -> Self {
         let url = format!("http://{}:{}", conf.db.host, conf.db.port);
         let db = Builder::new_remote(url.clone(), "".to_string())
@@ -32,72 +35,81 @@ impl LibsqlDatabase {
             .await
             .unwrap();
 
-        let conn = db.connect().unwrap();
-        let conn = Arc::new(RwLock::new(conn));
+        let connections = Mutex::new(Vec::new());
+        let max_idle = conf.db.max_idle;
+        let max_connections = conf.db.max_connections;
+        let semaphore = Arc::new(Semaphore::new(max_connections));
 
-        Self { db, conn }
-    }
-
-    async fn reconnect(&self) -> Result<(), libsql::Error> {
-        tracing::info!("connection staled, reconnecting...");
-        let new_conn = self.db.connect()?;
-        let mut conn_write = self.conn.write().await;
-        *conn_write = new_conn;
-
-        Ok(())
-    }
-
-    async fn with_retry<F, Fut, T>(&self, operation: F) -> libsql::Result<T>
-    where
-        F: Fn(Arc<RwLock<Connection>>) -> Fut,
-        Fut: Future<Output = libsql::Result<T>>,
-    {
-        let result = operation(self.conn.clone()).await;
-
-        match result {
-            Ok(value) => Ok(value),
-            Err(libsql::Error::Hrana(_)) => {
-                self.reconnect().await?;
-                operation(self.conn.clone()).await
-            }
-            Err(err) => Err(err),
+        Self {
+            db,
+            connections,
+            max_idle,
+            semaphore,
         }
+    }
+
+    async fn get_connection(&self) -> libsql::Result<(libsql::Connection, OwnedSemaphorePermit)> {
+        let permit = self.semaphore.clone().acquire_owned().await.unwrap();
+
+        tracing::info!(
+            "*** Acquired permit, now available: {}",
+            self.semaphore.available_permits()
+        );
+
+        let mut connections = self.connections.lock().await;
+
+        connections.retain(|(_, last_used)| last_used.elapsed() < self.max_idle);
+
+        tracing::info!("available connections: {}", connections.len());
+
+        if let Some((existing_conn, _)) = connections.pop() {
+            tracing::info!("Reusing existing connection");
+            return Ok((existing_conn, permit));
+        }
+
+        tracing::info!("Creating new connection");
+        Ok((self.db.connect()?, permit))
+    }
+
+    async fn return_connection(&self, conn: libsql::Connection, _permit: OwnedSemaphorePermit) {
+        let mut connections = self.connections.lock().await;
+        if connections.len() < self.semaphore.available_permits() {
+            connections.push((conn, Instant::now()));
+        }
+        // permit is implicitly dropped here
     }
 }
 
 #[async_trait]
-impl Database for LibsqlDatabase {
+impl Database for PooledLibsqlDatabase {
     async fn execute_batch(&self, sql: &str) -> libsql::Result<()> {
-        self.with_retry(|conn| {
-            Box::pin(async move {
-                let conn_read = conn.read().await;
-                conn_read.execute_batch(sql).await
-            })
-        })
-        .await
+        let (conn, permit) = self.get_connection().await?;
+        let result = conn.execute_batch(sql).await;
+        self.return_connection(conn, permit).await;
+
+        result
     }
 
     async fn query(&self, sql: &str) -> libsql::Result<Rows> {
-        self.with_retry(|conn| {
-            Box::pin(async move {
-                let conn_read = conn.read().await;
-                conn_read.query(sql, Params::None).await
-            })
-        })
-        .await
+        let (conn, permit) = self.get_connection().await?;
+        let result = conn.query(sql, Params::None).await;
+        self.return_connection(conn, permit).await;
+
+        result
     }
 
-    async fn transaction(&self) -> libsql::Result<LibsqlTransaction> {
-        self.with_retry(|conn| {
-            Box::pin(async move {
-                let conn_read = conn.read().await;
-                conn_read
-                    .transaction()
-                    .await
-                    .map(|tx| LibsqlTransaction { tx })
-            })
-        })
-        .await
+    async fn transaction(
+        &self,
+        behavior: TransactionBehavior,
+    ) -> libsql::Result<LibsqlTransaction> {
+        let (conn, permit) = self.get_connection().await?;
+        let tx = conn
+            .transaction_with_behavior(behavior)
+            .await
+            .map(|tx| LibsqlTransaction { tx });
+        self.return_connection(conn, permit).await;
+
+        tx
     }
 }
 
@@ -121,7 +133,10 @@ impl Database for LibsqlTransaction {
         self.tx.query(sql, Params::None).await
     }
 
-    async fn transaction(&self) -> libsql::Result<LibsqlTransaction> {
+    async fn transaction(
+        &self,
+        _behavior: TransactionBehavior,
+    ) -> libsql::Result<LibsqlTransaction> {
         Err(libsql::Error::Misuse(
             "nested transactions are not supported".to_string(),
         ))

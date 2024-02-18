@@ -6,7 +6,7 @@ use derive_new::new;
 use libsql::de;
 use sea_query::{Expr, Query, SqliteQueryBuilder};
 
-use crate::domain::client::model::{Client, ClientMeta, ClientMetaTable, ClientTable};
+use crate::domain::client::model::{Client, ClientTable};
 use crate::tools::db::Database;
 use crate::tools::error::{CustomError, DomainError};
 
@@ -16,11 +16,11 @@ pub struct ClientService {
 }
 
 impl ClientService {
-    pub async fn find(&self, id: u32) -> Result<Client, CustomError> {
+    pub async fn find(&self, id: u32, conn: Option<&dyn Database>) -> Result<Client, CustomError> {
+        let db = conn.unwrap_or(&*self.db);
         let query = Self::find_query(id);
 
-        let row = self
-            .db
+        let res = db
             .query(&query)
             .await
             .context("failed to query for rows")?
@@ -28,35 +28,8 @@ impl ClientService {
             .await
             .context("failed to retrieve next row")?;
 
-        if let Some(client_row) = row {
-            let client = de::from_row::<Client>(&client_row).context("failed to parse row")?;
-            return Ok(client);
-        }
-
-        Err(DomainError::new(
-            format!("No matching client for id {}", id),
-            StatusCode::NOT_FOUND.as_u16(),
-        ))?
-    }
-
-    pub async fn find_meta(
-        &self,
-        id: u32,
-        conn: Option<&dyn Database>,
-    ) -> Result<ClientMeta, CustomError> {
-        let db = conn.unwrap_or(&*self.db);
-        let query = Self::find_meta_query(id);
-
-        let row = db
-            .query(&query)
-            .await
-            .context("failed to query for rows")?
-            .next()
-            .await
-            .context("failed to retrieve next row")?;
-
-        if let Some(meta_row) = row {
-            let meta = de::from_row::<ClientMeta>(&meta_row).context("failed to parse row")?;
+        if let Some(row) = res {
+            let meta = de::from_row::<Client>(&row).context("failed to parse row")?;
             return Ok(meta);
         }
 
@@ -68,31 +41,22 @@ impl ClientService {
 
     fn find_query(client_id: u32) -> String {
         Query::select()
-            .columns([ClientTable::ID, ClientTable::Name])
+            .columns([
+                ClientTable::ID,
+                ClientTable::Balance,
+                ClientTable::NegativeLimit,
+            ])
             .from(ClientTable::Table)
             .and_where(Expr::col(ClientTable::ID).eq(client_id))
             .to_string(SqliteQueryBuilder)
             .to_owned()
     }
 
-    fn find_meta_query(client_id: u32) -> String {
-        Query::select()
-            .columns([
-                ClientMetaTable::ClientID,
-                ClientMetaTable::Balance,
-                ClientMetaTable::NegativeLimit,
-            ])
-            .from(ClientMetaTable::Table)
-            .and_where(Expr::col(ClientMetaTable::ClientID).eq(client_id))
-            .to_string(SqliteQueryBuilder)
-            .to_owned()
-    }
-
     pub fn balance_update_query(client_id: u32, balance: i32) -> String {
         Query::update()
-            .table(ClientMetaTable::Table)
-            .values([(ClientMetaTable::Balance, balance.into())])
-            .and_where(Expr::col(ClientMetaTable::ClientID).eq(client_id))
+            .table(ClientTable::Table)
+            .values([(ClientTable::Balance, balance.into())])
+            .and_where(Expr::col(ClientTable::ID).eq(client_id))
             .to_string(SqliteQueryBuilder)
             .to_owned()
     }

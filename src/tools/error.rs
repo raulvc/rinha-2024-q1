@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
@@ -97,4 +98,16 @@ impl IntoResponse for CustomError {
             }
         }
     }
+}
+
+pub fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
+    let error_message = match err.downcast_ref::<String>() {
+        Some(error) => format!("Panic occurred: {}", error),
+        None => match err.downcast_ref::<&str>() {
+            Some(error) => format!("Panic occurred: {}", error),
+            None => "Panic occurred, but the error could not be converted to a string".to_string(),
+        },
+    };
+
+    CustomError::Unexpected(anyhow::anyhow!(error_message)).into_response()
 }

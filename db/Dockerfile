@@ -14,4 +14,4 @@ ENV SQLD_DB_PATH=/var/lib/sqld/rinha
 
 RUN bash /var/lib/sqld/setup.sh
 
-CMD ["/bin/sqld"]
+CMD ["/bin/sqld", "--max-concurrent-requests", "100"]

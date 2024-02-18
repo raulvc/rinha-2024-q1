@@ -27,8 +27,6 @@ impl TransactionService {
         &self,
         request: CreateTransactionRequest,
     ) -> Result<CreateTransactionResponse, CustomError> {
-        let _client = self.client_service.find(request.client_id).await?;
-
         let key = format!("transaction:{}", request.client_id);
 
         self.locker
@@ -60,7 +58,7 @@ impl TransactionService {
         request: CreateTransactionRequest,
     ) -> Result<CreateTransactionResponse, CustomError> {
         let client_id = request.client_id;
-        let meta = self.client_service.find_meta(client_id, None).await?;
+        let meta = self.client_service.find(client_id, None).await?;
         let new_balance = Self::calculate_new_balance(meta.balance, &request);
 
         if new_balance < -meta.negative_limit {

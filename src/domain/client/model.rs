@@ -4,12 +4,6 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub id: u32,
-    pub name: String,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct ClientMeta {
-    pub client_id: u32,
     pub negative_limit: i32,
     pub balance: i32,
 }
@@ -19,14 +13,6 @@ pub enum ClientTable {
     #[iden = "clients"]
     Table,
     ID,
-    Name,
-}
-
-#[derive(Copy, Clone, Iden, PartialEq)]
-pub enum ClientMetaTable {
-    #[iden = "client_meta"]
-    Table,
-    ClientID,
-    Balance,
     NegativeLimit,
+    Balance,
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use derive_new::new;
+use libsql::TransactionBehavior::ReadOnly;
 use time::OffsetDateTime;
 
 use crate::domain::client::service::ClientService;
@@ -20,22 +21,23 @@ pub struct StatementService {
 
 impl StatementService {
     pub async fn find(&self, client_id: u32) -> Result<Statement, CustomError> {
-        let _client = self.client_service.find(client_id).await?;
-
         let tx = self
             .db
-            .transaction()
+            .transaction(ReadOnly)
             .await
             .context("failed to start a transaction")?;
 
-        let meta = self.client_service.find_meta(client_id, Some(&tx)).await?;
+        let client = self.client_service.find(client_id, Some(&tx)).await?;
         let transactions = self
             .transaction_service
             .find_latest(client_id, Some(&tx))
             .await?;
 
-        let balance =
-            StatementBalance::new(meta.balance, meta.negative_limit, OffsetDateTime::now_utc());
+        let balance = StatementBalance::new(
+            client.balance,
+            client.negative_limit,
+            OffsetDateTime::now_utc(),
+        );
         let statement_transactions = transactions
             .into_iter()
             .map(|t| t.into())

@@ -4,9 +4,11 @@ server:
 db:
   host: localhost
   port: 8080
+  max_idle: 13s
+  max_connections: 40
 
-etcd:
+redis:
   host: localhost
-  port: 2379
-  ttl: 5s
-  backoff: 200ms
+  port: 6379
+  ttl: 2s
+

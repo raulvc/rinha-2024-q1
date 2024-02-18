@@ -1,20 +1,17 @@
 version: '3.7'
 
 services:
-  etcd:
-    image: bitnami/etcd:latest
-    hostname: etcd
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+  redis:
+    image: redis:alpine
+    hostname: redis
     networks:
       - rinha
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: "0.50"
-          memory: "180MB"
+          cpus: "0.25"
+          memory: "60MB"
 
   haproxy:
     image: haproxy:alpine
@@ -43,8 +40,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
-          memory: "140MB"
+          cpus: "0.5"
+          memory: "160MB"
 
   server1: &server
     image: raulvc/rinha-app:latest
@@ -55,13 +52,13 @@ services:
       - rinha
     restart: unless-stopped
     depends_on:
-      - etcd
+      - redis
       - libsql-server
     deploy:
       resources:
         limits:
-          cpus: "0.2"
-          memory: "60MB"
+          cpus: "0.3"
+          memory: "110MB"
 
   server2:
     <<: *server

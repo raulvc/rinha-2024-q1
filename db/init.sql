@@ -1,16 +1,9 @@
 CREATE TABLE clients
 (
-    id   INTEGER PRIMARY KEY NOT NULL,
-    name VARCHAR(50)         NOT NULL
-);
-
-CREATE TABLE client_meta
-(
-    client_id      INTEGER PRIMARY KEY NOT NULL,
+    id             INTEGER PRIMARY KEY NOT NULL,
+    name           VARCHAR(50)         NOT NULL,
     negative_limit INTEGER             NOT NULL,
-    balance        INTEGER             NOT NULL,
-    CONSTRAINT fk_client_meta_id
-        FOREIGN KEY (client_id) REFERENCES clients (id)
+    balance        INTEGER             NOT NULL
 );
 
 -- obs: a ROW ID is implicitly declared for every table bellow (we have no choice in the matter)
@@ -28,16 +21,9 @@ CREATE TABLE transactions
 
 CREATE INDEX idx_transaction_date ON transactions (created_at DESC);
 
-INSERT INTO clients (id, name)
-VALUES (1, 'o barato sai caro'),
-       (2, 'zan corp ltda'),
-       (3, 'les cruders'),
-       (4, 'padaria joia de cocaia'),
-       (5, 'kid mais');
-
-INSERT INTO client_meta (client_id, negative_limit, balance)
-VALUES (1, 1000 * 100, 0),
-       (2, 800 * 100, 0),
-       (3, 10000 * 100, 0),
-       (4, 100000 * 100, 0),
-       (5, 5000 * 100, 0);
+INSERT INTO clients (id, name, negative_limit, balance)
+VALUES (1, 'o barato sai caro', 1000 * 100, 0),
+       (2, 'zan corp ltda', 800 * 100, 0),
+       (3, 'les cruders', 10000 * 100, 0),
+       (4, 'padaria joia de cocaia', 100000 * 100, 0),
+       (5, 'kid mais', 5000 * 100, 0);
