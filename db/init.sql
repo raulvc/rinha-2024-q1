@@ -19,7 +19,7 @@ CREATE TABLE transactions
         FOREIGN KEY (client_id) REFERENCES clients (id)
 );
 
-CREATE INDEX idx_transaction_date ON transactions (created_at DESC);
+CREATE INDEX idx_transaction_date ON transactions (client_id, created_at DESC);
 
 INSERT INTO clients (id, name, negative_limit, balance)
 VALUES (1, 'o barato sai caro', 1000 * 100, 0),
