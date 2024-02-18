@@ -7,6 +7,7 @@ use libsql::{Builder, Rows, TransactionBehavior};
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 use crate::config::app_config::AppConfig;
+use crate::tools::metrics::{DeferredObserve, OPS_HISTOGRAM};
 
 #[async_trait]
 pub trait Database: Send + Sync {
@@ -49,6 +50,7 @@ impl PooledLibsqlDatabase {
     }
 
     async fn get_connection(&self) -> libsql::Result<(libsql::Connection, OwnedSemaphorePermit)> {
+        let _deferred_observe = DeferredObserve::new(&OPS_HISTOGRAM, &["acquire_connection"]);
         let permit = self.semaphore.clone().acquire_owned().await.unwrap();
 
         tracing::debug!(

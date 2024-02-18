@@ -1,12 +1,12 @@
 use std::future::Future;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use redis::RedisError;
 use redlock::{RedLock, RedLockGuard};
 
 use crate::config::app_config::AppConfig;
 use crate::tools::error::CustomError;
-use crate::tools::metrics::OPS_HISTOGRAM;
+use crate::tools::metrics::{DeferredObserve, OPS_HISTOGRAM};
 
 pub struct Locker {
     client: RedLock,
@@ -31,15 +31,11 @@ impl Locker {
         F: FnOnce() -> Fut,
         Fut: Future<Output = Result<T, CustomError>>,
     {
-        let start = Instant::now();
+        let _deferred_observe = DeferredObserve::new(&OPS_HISTOGRAM, &["acquire_lock"]);
 
         match self.try_lock(&key).await {
             Ok(_lock) => {
                 // successfully obtained distributed lock
-                let acquired_time = start.elapsed().as_secs_f64();
-                OPS_HISTOGRAM
-                    .with_label_values(&["acquire_lock"])
-                    .observe(acquired_time);
 
                 f().await
                 // lock is implicitly dropped here (see Drop trait implementation for RedLockGuard)
