@@ -51,8 +51,8 @@ impl PooledLibsqlDatabase {
     async fn get_connection(&self) -> libsql::Result<(libsql::Connection, OwnedSemaphorePermit)> {
         let permit = self.semaphore.clone().acquire_owned().await.unwrap();
 
-        tracing::info!(
-            "*** Acquired permit, now available: {}",
+        tracing::debug!(
+            "Acquired permit, available slots: {}",
             self.semaphore.available_permits()
         );
 
@@ -60,14 +60,12 @@ impl PooledLibsqlDatabase {
 
         connections.retain(|(_, last_used)| last_used.elapsed() < self.max_idle);
 
-        tracing::info!("available connections: {}", connections.len());
-
         if let Some((existing_conn, _)) = connections.pop() {
-            tracing::info!("Reusing existing connection");
+            tracing::debug!("Reusing existing connection");
             return Ok((existing_conn, permit));
         }
 
-        tracing::info!("Creating new connection");
+        tracing::debug!("Creating new connection");
         Ok((self.db.connect()?, permit))
     }
 
